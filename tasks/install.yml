@@ -1,0 +1,68 @@
+---
+- name: Set hostname to 'rudder' in /etc/hosts
+  copy:
+    src: "{{ role_path }}/files/hosts"
+    dest: /etc/hosts
+
+- name: Set hostname to 'rudder' in hostnamectl
+  command: hostnamectl set-hostname rudder
+
+- name: Install postgresql
+  apt: 
+    name: postgresql
+    state: present
+
+- name: Get rudder apt public key 
+  apt_key:
+    url: "{{ rudder_pubkey_url }}"
+    state: present
+
+- name: Add Rudder's repository
+  apt_repository:
+    repo: "{{ rudder_repo }}"
+    state: present
+    update_cache: yes #apt-get update
+ 
+# apt-get update
+- name: Update cache
+  apt:
+    update_cache: yes
+
+- name: Install rudder-server-root
+  apt:
+    name: rudder-server-root
+    state: present
+
+- name: Install pexcpect python modules
+  apt:
+    name: ['python-pexpect', 'python3-pexpect']
+    state: present
+    
+# - name: Launch rudder installation 
+#   expect:
+#     command: /opt/rudder/bin/rudder-init
+#     responses:
+#       "Enter network allowed to access server (i.e 192.168.0.0/24): ": "192.168.20.0/27"
+#       "Add more networks? (yes/no) ": "no"
+#       "Hit any key to continue....": "d"
+#     timeout: 600
+#     echo: yes
+#   register: prompt
+
+- debug:
+    var: prompt.stdout_lines
+
+- name: Install Zabbix agent
+  apt:
+    name: zabbix-agent
+    state: present
+
+- name: Configure Zabbix agent
+  copy:
+    src: "{{ role_path }}/files/zabbix_agentd.conf"
+    dest: /etc/zabbix/zabbix_agentd.conf
+
+- name: Restart zabbix-agent service
+  systemd:
+    name: zabbix-agent
+    state: restarted
